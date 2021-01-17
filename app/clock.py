@@ -3,6 +3,8 @@
 from rpi_ws281x import PixelStrip, Color
 import sys, os, time, signal
 from datetime import datetime
+from gpiozero import Button
+from time import sleep
 
 #################################################
 ### Constants to be used across script.
@@ -25,7 +27,7 @@ PINK =          Color(255, 20, 147)
 BLACK =         Color(0, 0, 0)
 #ALL_COLORS = []
 
-def getHourAnimation(name):     #this might be unnecessarily overcomplicating things...
+def getHourAnimation(name):     # TODO: this might be unnecessarily overcomplicating things...
     hourAnimations = {
         "ping":         1,
         "pong":         2,
@@ -350,16 +352,17 @@ def main():
     
     DEBUG = False
 
-    #parse arguments here (if any alowed)
+    # TODO: parse arguments here (if any alowed)
 
-    #params = read_settings() from yaml
+    # TODO: params = read_settings() from yaml
 
     if DEBUG:
         #print(help(PixelStrip))
         pass
     
     # Default LED strip configuration:
-    # any parameters that for sure don't need to be changed by settings can be defaulted in the constructor and removed from main()
+    # TODO: any parameters that for sure don't need to be changed by settings can be defaulted in the constructor and removed from main()
+    
     LED_COUNT = 60        # Number of LED pixels.
     LED_PIN = 18          # GPIO pin connected to the pixels (18 uses PWM!).
     LED_FREQ_HZ = 800000  # LED signal frequency in hertz (usually 800khz)
@@ -369,61 +372,77 @@ def main():
     LED_CHANNEL = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
     ROTATION = 52
 
-    #replace with file i/o
-    COLOR_0 = RED                 #seconds
+    # GPIO-read Switch Position
+    switchUp = Button(2)
+    switchDown = Button(3)
+    currentPos = -1         # flag used to detect switch position changes
+
+    # TODO: replace with file i/o
+    COLOR_0 = RED                   #seconds
     COLOR_1 = GOLD                  #minute fill
     COLOR_2 = LIGHT_BLUE            #hour ticks
-    COLOR_3 = DARK_MAGENTA                  #current hour
+    COLOR_3 = DARK_MAGENTA          #current hour
 
-    # check if WIFI is configured and connected
-    # ping NTP to confirm that's all good
-    # if not, fall back to AP mode + static pattern / status LEDs
+    # TODO: check if WIFI is configured and connected
+    # TODO: ping NTP to confirm that's all good
+    # TODO: if not, fall back to AP mode + static pattern / status LEDs
 
     try:
-    
+        # get the strip initialized with parameters from above. 
         strip = PixelRing(LED_COUNT, LED_PIN, COLOR_0, COLOR_1, COLOR_2, COLOR_3, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, rotation=ROTATION)
-
         strip.begin()
 
-        #opening animation here
-        rainbowCycle(strip, wait_ms=10, iterations=1)
-
-        now = datetime.now()
-        last = now
-
-        #Clock startup:
-        animateClockStartup(strip, now, 10)
-    
+        # main loop containing core functionality
         while True:
-            #get current time here
-            now = datetime.now()
+            if switchUp.is_pressed: # check if switch state is UP
+                
+                if currentPos != 1: # only execute once on switch position change
+                    currentPos = 1
 
-            if DEBUG:
-                current_time = now.strftime("%H:%M:%S")
-                print("Time: ", current_time)    
-            
-            if last.hour < now.hour:
-                hAnimation = "flavortown"
-                hourChangeAnimation(strip, now, last, hAnimation)     
-                pass
-            elif last.minute < now.minute and now.minute % 15 == 0:
-                mAnimaiton = "crisscross"
-                minuteChangeAnimation(strip, now, last, mAnimaiton)
-            elif last.minute < now.minute:
-                mAnimaiton = "pong"
-                minuteChangeAnimation(strip, now, last, mAnimaiton)
+                rainbow(strip, wait_ms=10, iterations=1)
 
-            drawClock(strip, now)
-            strip.show()
+            elif switchDown.is_pressed: # check if switch state is DOWN
+                now = datetime.now()
+                last = now
 
-            #check for stop condition /interrupt here
+                #Clock startup:
+                if currentPos != 2: # only execute once on switch position change
+                    animateClockStartup(strip, now, 10)
+                    currentPos = 2
+
+                #get current time here
+                now = datetime.now()
+
+                if DEBUG:
+                    current_time = now.strftime("%H:%M:%S")
+                    print("Time: ", current_time)    
+                
+                if last.hour < now.hour:
+                    hAnimation = "flavortown"
+                    hourChangeAnimation(strip, now, last, hAnimation)     
+                    pass
+                elif last.minute < now.minute and now.minute % 15 == 0:
+                    mAnimaiton = "crisscross"
+                    minuteChangeAnimation(strip, now, last, mAnimaiton)
+                elif last.minute < now.minute:
+                    mAnimaiton = "pong"
+                    minuteChangeAnimation(strip, now, last, mAnimaiton)
+
+                drawClock(strip, now)
+                strip.show()
+
+                # TODO: check for stop condition/interrupt here
+                last = now
+
+            else: #switch state is NEUTRAL (or no switch is present)
+                if currentPos != 3:
+                    colorWipe(strip, BLACK, 10, reversed=True) 
+                    currentPos = 3
+                else:
+                    time.sleep(.1)
+
             time.sleep(.01)
-            last = now
 
-        #elif static:
-            #static(params)
-        #elif game:
-        #    wheelOfFortune()
 
     except KeyboardInterrupt:
         colorWipe(strip, BLACK, 10, reversed=True) 
