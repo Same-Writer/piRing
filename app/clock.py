@@ -47,14 +47,6 @@ def getMinuteAnimation(name):
         }
     return hourAnimations.get(name, 1)
 
-#################################################
-### Signal Handling
-#################################################
-
-def receiveSignal(signalNumber, frame):
-    print('Received:', signalNumber)
-    raise NameError('HiThere')
-
 
 #################################################
 ### PixelRing class
@@ -65,6 +57,10 @@ class PixelRing(PixelStrip):
     def __init__(self, num, pin, color0, color1, color2, color3, freq_hz=800000, dma=10, invert=False, brightness=255, channel=0, strip_type=None, gamma=None, rotation=0):
         super().__init__(num, pin, freq_hz, dma, invert, brightness, channel, strip_type, gamma)
         
+        # Program-exit signal handling
+        signal.signal(signal.SIGTERM, self.clearandexit)
+        self.exitnow = False        #property to allow main loop to exit with a SIGTERM from another program
+
         self.rotation = rotation
 
         self.color0 = color0        #seconds
@@ -75,6 +71,11 @@ class PixelRing(PixelStrip):
     def clear(self):
         for i in range(self.numPixels()):
             self._led_data[i] = Color(0,0,0)
+
+    def clearandexit(self, signum, frame):
+        #self.clear()
+        #self.show()
+        self.exitnow = True
 
     # override the follwoing to inlcude rotation:
     def setPixelColor(self, n, color):
@@ -393,7 +394,7 @@ def main():
         strip.begin()
 
         # main loop containing core functionality
-        while True:
+        while not strip.exitnow:
             if switchUp.is_pressed: # check if switch state is UP
                 
                 if currentPos != 1: # only execute once on switch position change
@@ -443,16 +444,14 @@ def main():
 
             time.sleep(.01)
 
+        colorWipe(strip, BLACK, 10, reversed=True)
 
     except KeyboardInterrupt:
         colorWipe(strip, BLACK, 10, reversed=True) 
     except NameError:
         print('An exception flew by!')
         raise
-    #except signal.SIGKILL:
-    #    colorWipe(strip, BLACK, 10, reversed=True) 
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, receiveSignal)
     main()

@@ -4,8 +4,10 @@ import subprocess
 import sys, os, signal
 
 # pkill signal values: https://linux.die.net/Bash-Beginners-Guide/sect_12_01.html
+    # SIGTERM = 15 
+    # SIGINT = 2
 
-bashCommand = "sudo pkill -2 -f "
+bashCommand = "sudo pkill -15 -f "
 scriptToKill = "clock.py"
 
 if len(sys.argv) > 1:
@@ -13,9 +15,7 @@ if len(sys.argv) > 1:
 
 fullCommand = bashCommand + scriptToKill
 
-print(fullCommand)
-
-#print(str(subprocess.call("ps aux | grep 'clock.py'", shell=True)))
+#print(fullCommand)
 
 subprocess.call(fullCommand, shell=True)
 
